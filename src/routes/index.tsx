@@ -1,28 +1,33 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Wifi, Network, Camera, Cpu, Server, ShieldCheck, Zap, Clock, Users, Star } from "lucide-react";
+import { ArrowRight, Wifi, Network, Camera, Cpu, Server, ShieldCheck, Zap, Clock, Users, Star, Package } from "lucide-react";
 import heroImg from "../assets/hero-broadband.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Akola Telecom — High-Speed Broadband & IT Solutions in Akola" },
-      { name: "description", content: "Get lightning-fast fiber broadband, networking, CCTV and ERP/CRM software from Akola's most trusted telecom partner." },
+      { title: "Broadband in Akola for Home & Business | Akola Telecom" },
+      { name: "description", content: "Get fiber broadband internet in Akola for your home or business. Contact Akola Telecom for local installation, broadband plans and 24×7 technical assistance." },
+      { property: "og:title", content: "Broadband in Akola for Home & Business | Akola Telecom" },
+      { property: "og:description", content: "Fiber broadband internet in Akola with local installation and 24×7 technical assistance." },
+      { property: "og:url", content: "https://www.akolatelecomandipnetworks.com/" },
     ],
+    links: [{ rel: "canonical", href: "https://www.akolatelecomandipnetworks.com/" }],
   }),
   component: Home,
 });
 
 const services = [
-  { icon: Wifi, title: "Broadband Internet", desc: "Fiber-to-the-home plans up to 1 Gbps with 99.9% uptime.", to: "/services/broadband", featured: true },
-  { icon: Network, title: "Networking Solutions", desc: "Structured cabling, Wi-Fi, LAN/WAN for offices & campuses.", to: "/services/networking" },
-  { icon: Camera, title: "CCTV & Surveillance", desc: "HD & 4K camera systems with remote monitoring.", to: "/services/cctv" },
-  { icon: Cpu, title: "IT Solutions", desc: "Custom ERP, CRM & business software development.", to: "/services/it-solutions" },
-  { icon: Server, title: "Leased Line & ISP", desc: "Dedicated symmetric bandwidth for enterprises.", to: "/services/leased-line" },
+  { icon: Wifi, title: "Broadband Internet", desc: "Fast, reliable fiber for homes and businesses, backed by local support in Akola.", to: "/services/broadband" },
+  { icon: Cpu, title: "IT Services & Business Software", desc: "Websites, CMMS, hotel management and billing systems tailored to your business.", to: "/services/it-solutions" },
+  { icon: Network, title: "Networking Solutions", desc: "Structured cabling, Wi-Fi and LAN/WAN for offices and campuses.", to: "/services/networking" },
+  { icon: Camera, title: "CCTV & Surveillance", desc: "HD and 4K camera systems with remote monitoring.", to: "/services/cctv" },
+  { icon: Server, title: "Leased Line & ISP", desc: "Dedicated connectivity for business-critical work.", to: "/services/leased-line" },
+  { icon: Package, title: "Networking Hardware", desc: "Routers, switches and business connectivity equipment.", to: "/services/hardware" },
 ];
 
 const stats = [
   { value: "20+", label: "Years of service" },
-  { value: "15K+", label: "Happy customers" },
+  { value: "500+", label: "Customers served" },
   { value: "99.9%", label: "Network uptime" },
   { value: "24/7", label: "Local support" },
 ];
@@ -39,21 +44,20 @@ function Home() {
         <div className="relative mx-auto grid max-w-7xl gap-10 px-4 py-20 md:grid-cols-2 md:px-6 md:py-28 lg:py-36">
           <div className="flex flex-col justify-center">
             <span className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur">
-              <Zap className="h-3.5 w-3.5" /> Akola's fastest fiber network
+              <Zap className="h-3.5 w-3.5" /> Broadband first. Business technology, made practical.
             </span>
             <h1 className="font-display text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
-              Internet that keeps up with <span className="text-accent">everything you do.</span>
+              Reliable broadband <span className="text-accent">in Akola.</span>
             </h1>
             <p className="mt-5 max-w-xl text-lg opacity-90">
-              High-speed broadband, enterprise networking, CCTV and custom IT solutions —
-              built and supported by Akola's own team.
+              Fiber internet for homes and businesses, with local installation and support from Akola's own team.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link to="/services/broadband" className="inline-flex items-center gap-2 rounded-lg bg-accent px-6 py-3 font-semibold text-accent-foreground shadow-elegant transition-smooth hover:opacity-90">
-                See broadband plans <ArrowRight className="h-4 w-4" />
+                Explore broadband <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link to="/contact" className="inline-flex items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-6 py-3 font-semibold backdrop-blur transition-smooth hover:bg-white/20">
-                Talk to us
+              <Link to="/services/it-solutions" className="inline-flex items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-6 py-3 font-semibold backdrop-blur transition-smooth hover:bg-white/20">
+                Explore IT services <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
           </div>
@@ -77,23 +81,18 @@ function Home() {
       <section className="mx-auto max-w-7xl px-4 py-20 md:px-6">
         <div className="mx-auto max-w-2xl text-center">
           <span className="text-xs font-semibold uppercase tracking-widest text-primary">What we do</span>
-          <h2 className="mt-2 font-display text-3xl font-bold text-foreground md:text-4xl">One partner. Every connection.</h2>
-          <p className="mt-3 text-muted-foreground">From homes to enterprises, we design, deploy and support it all.</p>
+          <h2 className="mt-2 font-display text-3xl font-bold text-foreground md:text-4xl">The right solutions for your home or business.</h2>
+          <p className="mt-3 text-muted-foreground">Explore our broadband, IT and specialist services, all supported by Akola's own team.</p>
         </div>
 
         <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {services.map((s) => (
             <Link
-              key={s.title}
+              key={s.to}
               to={s.to}
-              className={`group relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-card transition-smooth hover:-translate-y-1 hover:shadow-elegant ${s.featured ? "lg:col-span-2 lg:row-span-1" : ""}`}
+              className="group rounded-2xl border border-border bg-card p-6 shadow-card transition-smooth hover:-translate-y-1 hover:shadow-elegant"
             >
-              {s.featured && (
-                <span className="absolute right-4 top-4 rounded-full bg-accent/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent-foreground">
-                  Flagship
-                </span>
-              )}
-              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-brand text-primary-foreground shadow-elegant">
+              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-brand text-primary-foreground">
                 <s.icon className="h-6 w-6" />
               </div>
               <h3 className="font-display text-xl font-semibold text-foreground">{s.title}</h3>

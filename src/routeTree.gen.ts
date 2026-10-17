@@ -14,6 +14,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as CareersRouteImport } from './routes/careers'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as ServicesRouteImport } from './routes/services'
+import { Route as ApiInquiryRouteImport } from './routes/api.inquiry'
 import { Route as ServicesBroadbandRouteImport } from './routes/services.broadband'
 import { Route as ServicesCctvRouteImport } from './routes/services.cctv'
 import { Route as ServicesHardwareRouteImport } from './routes/services.hardware'
@@ -44,6 +45,11 @@ const ContactRoute = ContactRouteImport.update({
 const ServicesRoute = ServicesRouteImport.update({
   id: '/services',
   path: '/services',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInquiryRoute = ApiInquiryRouteImport.update({
+  id: '/api/inquiry',
+  path: '/api/inquiry',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ServicesBroadbandRoute = ServicesBroadbandRouteImport.update({
@@ -83,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
   '/services': typeof ServicesRouteWithChildren
+  '/api/inquiry': typeof ApiInquiryRoute
   '/services/broadband': typeof ServicesBroadbandRoute
   '/services/cctv': typeof ServicesCctvRoute
   '/services/hardware': typeof ServicesHardwareRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
   '/services': typeof ServicesRouteWithChildren
+  '/api/inquiry': typeof ApiInquiryRoute
   '/services/broadband': typeof ServicesBroadbandRoute
   '/services/cctv': typeof ServicesCctvRoute
   '/services/hardware': typeof ServicesHardwareRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
   '/services': typeof ServicesRouteWithChildren
+  '/api/inquiry': typeof ApiInquiryRoute
   '/services/broadband': typeof ServicesBroadbandRoute
   '/services/cctv': typeof ServicesCctvRoute
   '/services/hardware': typeof ServicesHardwareRoute
@@ -125,6 +134,7 @@ export interface FileRouteTypes {
     | '/careers'
     | '/contact'
     | '/services'
+    | '/api/inquiry'
     | '/services/broadband'
     | '/services/cctv'
     | '/services/hardware'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/careers'
     | '/contact'
     | '/services'
+    | '/api/inquiry'
     | '/services/broadband'
     | '/services/cctv'
     | '/services/hardware'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/careers'
     | '/contact'
     | '/services'
+    | '/api/inquiry'
     | '/services/broadband'
     | '/services/cctv'
     | '/services/hardware'
@@ -165,6 +177,7 @@ export interface RootRouteChildren {
   CareersRoute: typeof CareersRoute
   ContactRoute: typeof ContactRoute
   ServicesRoute: typeof ServicesRouteWithChildren
+  ApiInquiryRoute: typeof ApiInquiryRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -202,6 +215,13 @@ declare module '@tanstack/react-router' {
       path: '/services'
       fullPath: '/services'
       preLoaderRoute: typeof ServicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/inquiry': {
+      id: '/api/inquiry'
+      path: '/api/inquiry'
+      fullPath: '/api/inquiry'
+      preLoaderRoute: typeof ApiInquiryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/services/broadband': {
@@ -277,6 +297,7 @@ const rootRouteChildren: RootRouteChildren = {
   CareersRoute: CareersRoute,
   ContactRoute: ContactRoute,
   ServicesRoute: ServicesRouteWithChildren,
+  ApiInquiryRoute: ApiInquiryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Mail, Phone, MapPin, Send, MessageSquare, AlertTriangle, CheckCircle2, Upload, X, Clock } from "lucide-react";
+import { BUSINESS_ADDRESS, BUSINESS_EMAIL, BUSINESS_PHONE, BUSINESS_PHONE_LINK } from "@/lib/business-info";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -9,66 +10,134 @@ export const Route = createFileRoute("/contact")({
       { name: "description", content: "Contact Akola Telecom for new broadband connections, enterprise networking, CCTV or IT solutions. File a service complaint with photo attachments and get a quick resolution." },
       { property: "og:title", content: "Contact Akola Telecom & IP Networks" },
       { property: "og:description", content: "New connection enquiries and 24/7 complaint support for broadband, networking, CCTV and IT solutions in Akola." },
-      { property: "og:url", content: "/contact" },
+      { property: "og:url", content: "https://www.akolatelecomandipnetworks.com/contact" },
     ],
-    links: [{ rel: "canonical", href: "/contact" }],
+    links: [{ rel: "canonical", href: "https://www.akolatelecomandipnetworks.com/contact" }],
   }),
   component: Contact,
 });
 
 type Status = { ok: boolean; msg: string } | null;
 
+const INQUIRY_API_URL = "/api/inquiry";
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+
 function Contact() {
-  const [mode, setMode] = useState<"contact" | "complaint">("contact");
+  const [mode, setMode] = useState<"connection" | "complaint">("connection");
   const [status, setStatus] = useState<Status>(null);
-  const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
+  const [image, setImage] = useState<{ file: File; preview: string } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
-    name: "", email: "", phone: "", subject: "", message: "",
+    name: "", email: "", phone: "", address: "", message: "",
     accountId: "", issueType: "internet-down", priority: "normal",
   });
+
+  useEffect(() => () => {
+    if (image) URL.revokeObjectURL(image.preview);
+  }, [image]);
 
   const update = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm({ ...form, [k]: e.target.value });
 
   const onFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const valid = files.filter((f) => f.type.startsWith("image/") && f.size <= 5 * 1024 * 1024);
-    if (valid.length !== files.length) {
-      setStatus({ ok: false, msg: "Only images up to 5 MB are allowed." });
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/") || file.size > MAX_IMAGE_SIZE) {
+      setStatus({ ok: false, msg: "Choose an image up to 5 MB." });
+      e.target.value = "";
+      return;
     }
-    const next = [...images, ...valid.map((f) => ({ file: f, preview: URL.createObjectURL(f) }))].slice(0, 4);
-    setImages(next);
+    setImage({ file, preview: URL.createObjectURL(file) });
+    setStatus(null);
     if (fileInput.current) fileInput.current.value = "";
   };
 
-  const removeImage = (i: number) => {
-    URL.revokeObjectURL(images[i].preview);
-    setImages(images.filter((_, idx) => idx !== i));
+  const removeImage = () => {
+    setImage(null);
   };
 
-  const submit = (e: React.FormEvent) => {
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
-      setStatus({ ok: false, msg: "Please fill in name, email and message." });
+    if (loading) return;
+    const detail = mode === "connection" ? form.address : form.message;
+    if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || !detail.trim()) {
+      setStatus({ ok: false, msg: "Please complete all required fields." });
       return;
     }
-    if (form.name.length > 100 || form.email.length > 255 || form.message.length > 1000) {
+    if (form.name.length > 100 || form.email.length > 255 || detail.length > 1000) {
       setStatus({ ok: false, msg: "Some fields are too long." });
       return;
     }
-    // TODO: wire this up to your backend (Node/Express + MongoDB or Lovable Cloud).
-    console.log("[form submit]", { mode, ...form, images: images.map((i) => i.file.name) });
-    setStatus({
-      ok: true,
-      msg: mode === "contact"
-        ? "Thanks! We'll get back to you within 1 business day."
-        : "Complaint received. Our support team will contact you shortly with a ticket ID.",
-    });
-    setForm({ name: "", email: "", phone: "", subject: "", message: "", accountId: "", issueType: "internet-down", priority: "normal" });
-    images.forEach((i) => URL.revokeObjectURL(i.preview));
-    setImages([]);
+    if (form.phone.length > 20 || form.address.length > 1000 || form.message.length > 1000) {
+      setStatus({ ok: false, msg: "Some fields are too long." });
+      return;
+    }
+
+    const data = new FormData();
+    data.append("type", mode);
+    data.append("name", form.name.trim());
+    data.append("mobile", form.phone.trim());
+    data.append("email", form.email.trim());
+    if (mode === "connection") {
+      data.append("address", form.address.trim());
+    } else {
+      data.append("issue", form.message.trim());
+      data.append("accountId", form.accountId.trim());
+      data.append("issueType", form.issueType);
+      data.append("priority", form.priority);
+      if (image) data.append("image", image.file, image.file.name);
+    }
+
+    const xhr = new XMLHttpRequest();
+    setLoading(true);
+    setUploadProgress(0);
+    setStatus(null);
+    xhr.open("POST", INQUIRY_API_URL);
+    xhr.timeout = 120000;
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        setUploadProgress(Math.round((event.loaded / event.total) * 100));
+      }
+    };
+    xhr.onload = () => {
+      setLoading(false);
+      setUploadProgress(0);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        setStatus({
+          ok: true,
+          msg: mode === "connection"
+            ? "Your connection enquiry has been submitted. Our team will contact you shortly."
+            : "Your complaint has been submitted. Our support team will contact you shortly.",
+        });
+        setForm({ name: "", email: "", phone: "", address: "", message: "", accountId: "", issueType: "internet-down", priority: "normal" });
+        removeImage();
+        return;
+      }
+
+      let message = "Submission failed. Please try again.";
+      try {
+        const response = JSON.parse(xhr.responseText) as { message?: unknown; error?: unknown };
+        if (typeof response.message === "string") message = response.message;
+        else if (typeof response.error === "string") message = response.error;
+      } catch {
+        // Use the generic message when the server response is not JSON.
+      }
+      setStatus({ ok: false, msg: message });
+    };
+    xhr.onerror = () => {
+      setLoading(false);
+      setUploadProgress(0);
+      setStatus({ ok: false, msg: "Unable to reach the server. Please check your connection and try again." });
+    };
+    xhr.ontimeout = () => {
+      setLoading(false);
+      setUploadProgress(0);
+      setStatus({ ok: false, msg: "The request timed out. Please try again." });
+    };
+    xhr.send(data);
   };
 
   return (
@@ -91,10 +160,10 @@ function Contact() {
           {/* Info column */}
           <div className="space-y-4">
             {[
-              { icon: MapPin, label: "Visit us", value: "Akola, Maharashtra, India" },
-              { icon: Phone, label: "Call us", value: "+91 00000 00000" },
-              { icon: Mail, label: "Email us", value: "info@akolatelecom.com" },
-              { icon: Clock, label: "Support hours", value: "Mon–Sat • 9 AM – 9 PM" },
+              { icon: MapPin, label: "Visit us", value: BUSINESS_ADDRESS },
+              { icon: Phone, label: "Call us", value: BUSINESS_PHONE },
+              { icon: Mail, label: "Email us", value: BUSINESS_EMAIL },
+              { icon: Clock, label: "Support", value: "24×7 technical assistance" },
             ].map((c) => (
               <div key={c.label} className="flex gap-3 rounded-xl border border-border bg-card p-4 shadow-card">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-brand text-primary-foreground">
@@ -102,7 +171,13 @@ function Contact() {
                 </div>
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{c.label}</div>
-                  <div className="mt-0.5 text-sm font-medium text-foreground">{c.value}</div>
+                  {c.label === "Call us" ? (
+                    <a href={`tel:${BUSINESS_PHONE_LINK}`} className="mt-0.5 block text-sm font-medium text-foreground hover:text-primary">{c.value}</a>
+                  ) : c.label === "Email us" ? (
+                    <a href={`mailto:${BUSINESS_EMAIL}`} className="mt-0.5 block break-all text-sm font-medium text-foreground hover:text-primary">{c.value}</a>
+                  ) : (
+                    <div className="mt-0.5 text-sm font-medium text-foreground">{c.value}</div>
+                  )}
                 </div>
               </div>
             ))}
@@ -115,13 +190,15 @@ function Contact() {
               <div className="mb-6 inline-flex rounded-xl bg-secondary p-1">
                 <button
                   type="button"
-                  onClick={() => { setMode("contact"); setStatus(null); }}
-                  className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-smooth ${mode === "contact" ? "bg-gradient-brand text-primary-foreground shadow-elegant" : "text-muted-foreground hover:text-foreground"}`}
+                  disabled={loading}
+                  onClick={() => { setMode("connection"); setStatus(null); }}
+                  className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-smooth ${mode === "connection" ? "bg-gradient-brand text-primary-foreground shadow-elegant" : "text-muted-foreground hover:text-foreground"}`}
                 >
-                  <MessageSquare className="h-4 w-4" /> Contact
+                  <MessageSquare className="h-4 w-4" /> New Connection
                 </button>
                 <button
                   type="button"
+                  disabled={loading}
                   onClick={() => { setMode("complaint"); setStatus(null); }}
                   className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-smooth ${mode === "complaint" ? "bg-gradient-brand text-primary-foreground shadow-elegant" : "text-muted-foreground hover:text-foreground"}`}
                 >
@@ -130,84 +207,102 @@ function Contact() {
               </div>
 
               <h2 className="font-display text-2xl font-bold">
-                {mode === "contact" ? "Send us a message" : "File a service complaint"}
+                {mode === "connection" ? "Request a new connection" : "File a service complaint"}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {mode === "contact"
-                  ? "Fill this in and our team will get back to you shortly."
+                {mode === "connection"
+                  ? "Share your details and address, and our team will get back to you shortly."
                   : "Give us your account details so we can resolve your issue quickly."}
               </p>
 
               <form onSubmit={submit} className="mt-6 grid gap-4">
                 <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Full name *" value={form.name} onChange={update("name")} maxLength={100} />
-                  <Field label="Email *" type="email" value={form.email} onChange={update("email")} maxLength={255} />
+                  <Field label="Full name *" value={form.name} onChange={update("name")} maxLength={100} required disabled={loading} />
+                  <Field label="Email *" type="email" value={form.email} onChange={update("email")} maxLength={255} required disabled={loading} />
                 </div>
+
                 <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Phone" type="tel" value={form.phone} onChange={update("phone")} maxLength={20} />
-                  {mode === "contact" ? (
-                    <Field label="Subject" value={form.subject} onChange={update("subject")} maxLength={150} />
-                  ) : (
-                    <Field label="Account / Customer ID" value={form.accountId} onChange={update("accountId")} maxLength={50} />
+                  <Field label="Phone *" type="tel" value={form.phone} onChange={update("phone")} maxLength={20} required disabled={loading} />
+                  {mode === "complaint" && (
+                    <Field label="Account / Customer ID" value={form.accountId} onChange={update("accountId")} maxLength={50} disabled={loading} />
                   )}
                 </div>
 
-                {mode === "complaint" && (
+                {mode === "complaint" ? (
                   <div className="grid gap-4 md:grid-cols-2">
-                    <Select label="Issue type" value={form.issueType} onChange={update("issueType")}>
+                    <Select label="Issue type" value={form.issueType} onChange={update("issueType")} disabled={loading}>
                       <option value="internet-down">Internet is down</option>
                       <option value="slow-speed">Slow speed</option>
                       <option value="billing">Billing issue</option>
                       <option value="cctv">CCTV / hardware issue</option>
                       <option value="other">Other</option>
                     </Select>
-                    <Select label="Priority" value={form.priority} onChange={update("priority")}>
+                    <Select label="Priority" value={form.priority} onChange={update("priority")} disabled={loading}>
                       <option value="low">Low</option>
                       <option value="normal">Normal</option>
                       <option value="high">High</option>
                       <option value="urgent">Urgent</option>
                     </Select>
                   </div>
+                ) : (
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-foreground">Installation address *</label>
+                    <textarea
+                      required
+                      disabled={loading}
+                      rows={3}
+                      maxLength={1000}
+                      value={form.address}
+                      onChange={update("address")}
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-smooth focus:border-primary focus:ring-2 focus:ring-ring/40"
+                      placeholder="Enter the address where you need the connection"
+                    />
+                  </div>
                 )}
-
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-foreground">
-                    {mode === "contact" ? "Message *" : "Describe the problem *"}
-                  </label>
-                  <textarea
-                    required
-                    rows={5}
-                    maxLength={1000}
-                    value={form.message}
-                    onChange={update("message")}
-                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-smooth focus:border-primary focus:ring-2 focus:ring-ring/40"
-                    placeholder={mode === "contact" ? "Tell us how we can help..." : "When did it start? What have you tried?"}
-                  />
-                  <div className="mt-1 text-right text-xs text-muted-foreground">{form.message.length}/1000</div>
-                </div>
 
                 {mode === "complaint" && (
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-foreground">
-                      Attach photos <span className="text-muted-foreground">(optional, up to 4 · 5 MB each)</span>
+                      Describe the problem *
+                    </label>
+                    <textarea
+                      required
+                      disabled={loading}
+                      rows={5}
+                      maxLength={1000}
+                      value={form.message}
+                      onChange={update("message")}
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-smooth focus:border-primary focus:ring-2 focus:ring-ring/40"
+                      placeholder="When did it start? What have you tried?"
+                    />
+                    <div className="mt-1 text-right text-xs text-muted-foreground">{form.message.length}/1000</div>
+                  </div>
+                )}
+
+                {mode === "complaint" && (
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-foreground">
+                      Attach a photo <span className="text-muted-foreground">(optional, up to 5 MB)</span>
                     </label>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                      {images.map((img, i) => (
-                        <div key={i} className="relative aspect-square overflow-hidden rounded-lg border border-border">
-                          <img src={img.preview} alt={`Attachment ${i + 1}`} className="h-full w-full object-cover" />
+                      {image && (
+                        <div className="relative aspect-square overflow-hidden rounded-lg border border-border">
+                          <img src={image.preview} alt="Complaint attachment preview" className="h-full w-full object-cover" />
                           <button
                             type="button"
-                            onClick={() => removeImage(i)}
+                            disabled={loading}
+                            onClick={removeImage}
                             aria-label="Remove image"
                             className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
                         </div>
-                      ))}
-                      {images.length < 4 && (
+                      )}
+                      {!image && (
                         <button
                           type="button"
+                          disabled={loading}
                           onClick={() => fileInput.current?.click()}
                           className="flex aspect-square flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-secondary/40 text-xs font-medium text-muted-foreground transition-smooth hover:border-primary hover:text-primary"
                         >
@@ -220,10 +315,22 @@ function Contact() {
                       ref={fileInput}
                       type="file"
                       accept="image/*"
-                      multiple
+                      disabled={loading}
                       onChange={onFiles}
                       className="hidden"
                     />
+                    {uploadProgress > 0 && loading && (
+                      <div
+                        className="mt-3 h-2 overflow-hidden rounded-full bg-secondary"
+                        role="progressbar"
+                        aria-label="Submission upload progress"
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={uploadProgress}
+                      >
+                        <div className="h-full bg-primary transition-all" style={{ width: `${uploadProgress}%` }} />
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -236,10 +343,11 @@ function Contact() {
 
                 <button
                   type="submit"
+                  disabled={loading}
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-brand px-6 py-3 font-semibold text-primary-foreground shadow-elegant transition-smooth hover:opacity-90"
                 >
                   <Send className="h-4 w-4" />
-                  {mode === "contact" ? "Send message" : "Submit complaint"}
+                  {loading ? "Submitting..." : mode === "connection" ? "Request connection" : "Submit complaint"}
                 </button>
               </form>
             </div>
@@ -250,31 +358,43 @@ function Contact() {
       {/* Map */}
       <section className="mx-auto max-w-7xl px-4 pb-20 md:px-6">
         <div className="mb-6">
-          <h2 className="font-display text-2xl font-bold text-foreground md:text-3xl">Find us in Akola</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Drop by our office — we'd love to say hello.</p>
+          <h2 className="font-display text-2xl font-bold text-foreground md:text-3xl">Visit our Akola office</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{BUSINESS_ADDRESS}</p>
         </div>
-        <div className="overflow-hidden rounded-2xl border border-border shadow-card">
-          <iframe
-            title="Akola Telecom office location"
-            src="https://www.google.com/maps?q=Akola,Maharashtra,India&output=embed"
-            width="100%"
-            height="420"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            className="block w-full border-0"
-          />
+        <div className="grid gap-6 lg:grid-cols-[1.5fr_0.8fr]">
+          <div className="min-h-[360px] overflow-hidden rounded-2xl border border-border shadow-card">
+            <iframe
+              title="Akola Telecom office location at Daryav Heights, MG Road, Akola"
+              src="https://www.google.com/maps?q=T-13%2C%203rd%20Floor%2C%20Daryav%20Heights%2C%20MG%20Road%2C%20Akola%20444001&output=embed"
+              width="100%"
+              height="420"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="block h-full min-h-[360px] w-full border-0"
+            />
+          </div>
+          <aside className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card p-6 text-center shadow-card">
+            <img src="/website-qr.png" alt="QR code to visit the Akola Telecom website" className="h-48 w-48 rounded-lg bg-white p-2" />
+            <h3 className="mt-4 font-display text-lg font-semibold text-foreground">Scan to visit our website</h3>
+            <p className="mt-1 max-w-xs text-sm text-muted-foreground">Save our website for quick access to services and support.</p>
+            <a href="/website-qr.png" target="_blank" rel="noopener noreferrer" className="mt-4 text-sm font-semibold text-primary hover:underline">
+              Open QR image
+            </a>
+          </aside>
         </div>
       </section>
     </>
   );
 }
 
-function Field({ label, value, onChange, type = "text", maxLength }: { label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; type?: string; maxLength?: number }) {
+function Field({ label, value, onChange, type = "text", maxLength, required = false, disabled = false }: { label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; type?: string; maxLength?: number; required?: boolean; disabled?: boolean }) {
   return (
     <div>
       <label className="mb-1.5 block text-sm font-medium text-foreground">{label}</label>
       <input
         type={type}
+        required={required}
+        disabled={disabled}
         value={value}
         onChange={onChange}
         maxLength={maxLength}
@@ -284,13 +404,14 @@ function Field({ label, value, onChange, type = "text", maxLength }: { label: st
   );
 }
 
-function Select({ label, value, onChange, children }: { label: string; value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; children: React.ReactNode }) {
+function Select({ label, value, onChange, children, disabled = false }: { label: string; value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; children: React.ReactNode; disabled?: boolean }) {
   return (
     <div>
       <label className="mb-1.5 block text-sm font-medium text-foreground">{label}</label>
       <select
         value={value}
         onChange={onChange}
+        disabled={disabled}
         className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-smooth focus:border-primary focus:ring-2 focus:ring-ring/40"
       >
         {children}

@@ -1,4 +1,3 @@
-// Header.jsx — top navigation. Rename service items in SERVICES array below.
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Menu, X, ChevronDown } from "lucide-react";
@@ -6,9 +5,9 @@ import logoImg from "@/assets/atinlogo.jpg";
 
 const SERVICES = [
   { to: "/services/broadband", label: "Broadband Internet", desc: "High-speed fiber for home & business" },
+  { to: "/services/it-solutions", label: "IT Services & Business Software", desc: "Websites, CMMS, hotel & billing systems" },
   { to: "/services/networking", label: "Networking Solutions", desc: "LAN, WAN & Wi-Fi setup" },
   { to: "/services/cctv", label: "CCTV & Surveillance", desc: "HD security camera systems" },
-  { to: "/services/it-solutions", label: "IT Solutions", desc: "ERP, CRM & custom software" },
   { to: "/services/leased-line", label: "Leased Line & ISP", desc: "Dedicated enterprise connectivity" },
   { to: "/services/hardware", label: "Networking Hardware", desc: "Enterprise-grade networking products" },
 ];
@@ -40,7 +39,7 @@ export default function Header() {
               Services <ChevronDown className="h-4 w-4" />
             </button>
             <div className="absolute left-0 top-full z-[9999] w-80 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-              <div className="rounded-xl border border-border bg-popover p-2 shadow-elegant">
+              <div className="w-80 rounded-xl border border-border bg-popover p-2 shadow-elegant">
                 {SERVICES.map((s) => (
                   <Link
                     key={s.to}
@@ -112,5 +111,3 @@ function MobileLink({ to, children, onClick }: { to: string; children: React.Rea
     </Link>
   );
 }
-
-
